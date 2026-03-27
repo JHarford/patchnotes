@@ -37,7 +37,10 @@ export async function POST(req: NextRequest) {
 
   if (error) {
     console.error("Subscribe error:", error);
-    return NextResponse.json({ error: "Failed to subscribe" }, { status: 500 });
+    return NextResponse.json(
+      { error: "Failed to subscribe", detail: error.message },
+      { status: 500 }
+    );
   }
 
   return NextResponse.json({ message: "Subscribed" });
