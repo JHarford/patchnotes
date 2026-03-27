@@ -1,0 +1,20 @@
+@import "tailwindcss";
+
+:root {
+  --pn-bg: #0a0a0f;
+  --pn-surface: #12121a;
+  --pn-surface-hover: #1a1a26;
+  --pn-border: #2a2a3a;
+  --pn-text: #e4e4ef;
+  --pn-text-muted: #8888a0;
+  --pn-accent: #6366f1;
+  --pn-accent-hover: #818cf8;
+  --pn-green: #22c55e;
+  --pn-red: #ef4444;
+}
+
+body {
+  background: var(--pn-bg);
+  color: var(--pn-text);
+  font-family: system-ui, -apple-system, sans-serif;
+}
