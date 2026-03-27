@@ -65,22 +65,36 @@ export default function AdminDashboard({
 
   async function sendReview(id: string) {
     setLoading(id + "-review");
-    const res = await fetch("/api/admin/send-review", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ newsletterId: id }),
-    });
-    const data = await res.json();
-    setLoading(null);
-    if (res.ok) {
+    try {
+      const res = await fetch("/api/admin/send-review", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ newsletterId: id }),
+      });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: `Server returned ${res.status}` };
+      }
+      setLoading(null);
+      if (res.ok) {
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "success", message: `Review sent to ${data.email}` },
+        }));
+      } else {
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "error", message: data.error || `Failed (${res.status})` },
+        }));
+      }
+    } catch {
+      setLoading(null);
       setFeedback((f) => ({
         ...f,
-        [id]: { type: "success", message: `Review sent to ${data.email}` },
-      }));
-    } else {
-      setFeedback((f) => ({
-        ...f,
-        [id]: { type: "error", message: data.error || "Failed" },
+        [id]: { type: "error", message: "Network error" },
       }));
     }
   }
@@ -93,21 +107,35 @@ export default function AdminDashboard({
     }
     setConfirmSend(null);
     setLoading(id + "-send");
-    const res = await fetch(`/api/newsletters/${id}/send`, { method: "POST" });
-    const data = await res.json();
-    setLoading(null);
-    if (res.ok) {
+    try {
+      const res = await fetch(`/api/newsletters/${id}/send`, { method: "POST" });
+      const text = await res.text();
+      let data;
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = { error: `Server returned ${res.status}` };
+      }
+      setLoading(null);
+      if (res.ok) {
+        setFeedback((f) => ({
+          ...f,
+          [id]: {
+            type: "success",
+            message: `Sent to ${data.sent} subscribers (${data.failed} failed)`,
+          },
+        }));
+      } else {
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "error", message: data.error || `Failed (${res.status})` },
+        }));
+      }
+    } catch (err) {
+      setLoading(null);
       setFeedback((f) => ({
         ...f,
-        [id]: {
-          type: "success",
-          message: `Sent to ${data.sent} subscribers (${data.failed} failed)`,
-        },
-      }));
-    } else {
-      setFeedback((f) => ({
-        ...f,
-        [id]: { type: "error", message: data.error || "Send failed" },
+        [id]: { type: "error", message: "Network error — check server logs" },
       }));
     }
   }
