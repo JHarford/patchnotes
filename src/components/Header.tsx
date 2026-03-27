@@ -4,6 +4,8 @@ export default function Header() {
   return (
     <header
       style={{
+        position: "relative",
+        zIndex: 1,
         borderBottom: "1px solid #2a2a3a",
         padding: "16px 24px",
         display: "flex",

@@ -1,12 +1,16 @@
 import SubscribeForm from "@/components/SubscribeForm";
 import Header from "@/components/Header";
+import HeroBackground from "@/components/HeroBackground";
 
 export default function Home() {
   return (
-    <div style={{ minHeight: "100vh" }}>
+    <div style={{ minHeight: "100vh", position: "relative" }}>
+      <HeroBackground />
       <Header />
       <main
         style={{
+          position: "relative",
+          zIndex: 1,
           display: "flex",
           flexDirection: "column",
           alignItems: "center",
