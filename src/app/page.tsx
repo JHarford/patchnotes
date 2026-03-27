@@ -58,7 +58,7 @@ export default function Home() {
         <SubscribeForm />
         <p
           style={{
-            color: "#555",
+            color: "#8888a0",
             fontSize: "12px",
             marginTop: "16px",
           }}
