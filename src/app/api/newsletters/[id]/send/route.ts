@@ -2,11 +2,17 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase";
 import { sendEmail } from "@/lib/resend";
 import { renderNewsletterHtml } from "@/lib/pipeline";
+import { verifyAdminToken } from "@/lib/admin-auth";
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  const token = req.cookies.get("admin_token")?.value;
+  if (!token || !verifyAdminToken(token)) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
   const { id } = await params;
 
   // Get newsletter
