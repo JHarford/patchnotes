@@ -49,8 +49,8 @@ export default function SubscribeForm() {
           style={{
             flex: 1,
             padding: "12px 16px",
-            background: "#1a1a26",
-            border: "1px solid #2a2a3a",
+            background: "#0d0d14",
+            border: "1px solid #1a1a26",
             borderRadius: "8px",
             color: "#e4e4ef",
             fontSize: "16px",

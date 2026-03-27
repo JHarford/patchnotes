@@ -45,7 +45,7 @@ export default function Home() {
         </h1>
         <p
           style={{
-            color: "#8888a0",
+            color: "#b0b0c8",
             fontSize: "18px",
             lineHeight: 1.6,
             maxWidth: "500px",

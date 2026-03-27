@@ -43,7 +43,7 @@ export default function HeroBackground() {
         style={{
           position: "absolute",
           left: "50%",
-          bottom: 0,
+          bottom: "-300px",
           width: "120%",
           maxWidth: "none",
           transform: "translateX(-50%)",
