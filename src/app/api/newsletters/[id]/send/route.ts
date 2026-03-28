@@ -87,15 +87,23 @@ export async function POST(
     }
   }
 
-  // Update newsletter status
-  await supabase
-    .from("newsletters")
-    .update({
-      status: "sent",
-      sent_at: new Date().toISOString(),
-      total_recipients: subscribers.length,
-    })
-    .eq("id", id);
+  // Update newsletter status — only mark sent if at least one succeeded
+  if (sent > 0) {
+    await supabase
+      .from("newsletters")
+      .update({
+        status: "sent",
+        sent_at: new Date().toISOString(),
+        total_recipients: subscribers.length,
+      })
+      .eq("id", id);
+  } else {
+    // All failed — reset to draft so it can be retried
+    await supabase
+      .from("newsletters")
+      .update({ status: "draft" })
+      .eq("id", id);
+  }
 
   return NextResponse.json({ sent, failed, total: subscribers.length });
 
