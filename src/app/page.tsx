@@ -49,23 +49,11 @@ export default function Home() {
             fontSize: "18px",
             lineHeight: 1.6,
             maxWidth: "500px",
-            marginBottom: "12px",
-          }}
-        >
-          Studio movements, dev tool releases, engine papers, and the news that
-          matters — in your inbox every morning.
-        </p>
-        <p
-          style={{
-            color: "#8888a0",
-            fontSize: "13px",
-            lineHeight: 1.5,
-            maxWidth: "460px",
             marginBottom: "32px",
           }}
         >
-          AI-powered research, human-curated editorial. Every story is reviewed
-          and selected by a real person before it hits your inbox.
+          Studio movements, dev tools, engine papers, and the news that
+          matters — human-curated, in your inbox every morning.
         </p>
         <SubscribeForm />
         <p
