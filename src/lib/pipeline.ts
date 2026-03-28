@@ -100,7 +100,7 @@ export async function renderNewsletterHtml(
   unsubscribeUrl: string
 ): Promise<string> {
   const html = await render(
-    NewsletterEmail({ content, unsubscribeUrl, subscribeUrl: "https://patchnote.ai" })
+    NewsletterEmail({ content, unsubscribeUrl, subscribeUrl: process.env.NEXT_PUBLIC_APP_URL || "https://patchnote.gg" })
   );
   return html;
 }

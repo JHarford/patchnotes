@@ -30,6 +30,8 @@ export async function POST(
     return NextResponse.json({ error: "Already sent" }, { status: 409 });
   }
 
+  try {
+
   // Get active subscribers
   const { data: subscribers } = await supabase
     .from("subscribers")
@@ -46,7 +48,7 @@ export async function POST(
     .update({ status: "sending" })
     .eq("id", id);
 
-  const appUrl = "https://patchnote.ai";
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://patchnote.gg";
   let sent = 0;
   let failed = 0;
 
@@ -96,4 +98,17 @@ export async function POST(
     .eq("id", id);
 
   return NextResponse.json({ sent, failed, total: subscribers.length });
+
+  } catch (err) {
+    console.error("Send failed:", err);
+    // Reset status so it can be retried
+    await supabase
+      .from("newsletters")
+      .update({ status: "draft" })
+      .eq("id", id);
+    return NextResponse.json(
+      { error: err instanceof Error ? err.message : "Internal server error" },
+      { status: 500 }
+    );
+  }
 }
