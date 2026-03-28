@@ -11,6 +11,7 @@ export interface Article {
   summary: string;
   source_url: string;
   source_name: string;
+  include?: boolean;
 }
 
 export interface NewsletterSection {
@@ -24,6 +25,7 @@ export interface QuickHit {
   text: string;
   source_url: string;
   source_name: string;
+  include?: boolean;
 }
 
 export interface NewsletterContent {

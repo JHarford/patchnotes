@@ -1,6 +1,35 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
+
+interface Article {
+  headline: string;
+  summary: string;
+  source_url: string;
+  source_name: string;
+  include?: boolean;
+}
+
+interface QuickHit {
+  text: string;
+  source_url: string;
+  source_name: string;
+  include?: boolean;
+}
+
+interface Section {
+  heading: string;
+  emoji: string;
+  articles: Article[];
+}
+
+interface BodyJson {
+  title?: string;
+  date?: string;
+  intro?: string;
+  sections?: Section[];
+  quick_hits?: QuickHit[];
+}
 
 interface NewsletterRow {
   id: string;
@@ -10,9 +39,7 @@ interface NewsletterRow {
   created_at: string;
   sent_at: string | null;
   total_recipients: number;
-  body_json: {
-    sections?: { articles: unknown[] }[];
-  } | null;
+  body_json: BodyJson | null;
 }
 
 interface Stats {
@@ -32,6 +59,9 @@ export default function AdminDashboard({
 }) {
   const [previewId, setPreviewId] = useState<string | null>(null);
   const [previewHtml, setPreviewHtml] = useState<string | null>(null);
+  const [curateId, setCurateId] = useState<string | null>(null);
+  const [curateJson, setCurateJson] = useState<BodyJson | null>(null);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<
@@ -50,6 +80,24 @@ export default function AdminDashboard({
     );
   }
 
+  function includedCount(json: BodyJson): { articles: number; total: number; quickHits: number; totalQuickHits: number } {
+    let articles = 0;
+    let total = 0;
+    let quickHits = 0;
+    let totalQuickHits = 0;
+    for (const s of json.sections || []) {
+      for (const a of s.articles || []) {
+        total++;
+        if (a.include !== false) articles++;
+      }
+    }
+    for (const q of json.quick_hits || []) {
+      totalQuickHits++;
+      if (q.include !== false) quickHits++;
+    }
+    return { articles, total, quickHits, totalQuickHits };
+  }
+
   async function togglePreview(id: string) {
     if (previewId === id) {
       setPreviewId(null);
@@ -61,6 +109,109 @@ export default function AdminDashboard({
     const res = await fetch(`/api/preview/${id}`);
     const html = await res.text();
     setPreviewHtml(html);
+  }
+
+  function openCurate(nl: NewsletterRow) {
+    if (curateId === nl.id) {
+      setCurateId(null);
+      setCurateJson(null);
+      return;
+    }
+    // Deep clone body_json, default include to true where missing
+    const json = JSON.parse(JSON.stringify(nl.body_json || {})) as BodyJson;
+    for (const s of json.sections || []) {
+      for (const a of s.articles || []) {
+        if (a.include === undefined) a.include = true;
+      }
+    }
+    for (const q of json.quick_hits || []) {
+      if (q.include === undefined) q.include = true;
+    }
+    setCurateId(nl.id);
+    setCurateJson(json);
+    // Close preview if open
+    if (previewId === nl.id) {
+      setPreviewId(null);
+      setPreviewHtml(null);
+    }
+  }
+
+  const toggleArticle = useCallback((sectionIdx: number, articleIdx: number) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      const article = next.sections?.[sectionIdx]?.articles?.[articleIdx];
+      if (article) article.include = !article.include;
+      return next;
+    });
+  }, []);
+
+  const toggleQuickHit = useCallback((idx: number) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      const qh = next.quick_hits?.[idx];
+      if (qh) qh.include = !qh.include;
+      return next;
+    });
+  }, []);
+
+  const setSectionAll = useCallback((sectionIdx: number, value: boolean) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      for (const a of next.sections?.[sectionIdx]?.articles || []) {
+        a.include = value;
+      }
+      return next;
+    });
+  }, []);
+
+  const setQuickHitsAll = useCallback((value: boolean) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      for (const q of next.quick_hits || []) {
+        q.include = value;
+      }
+      return next;
+    });
+  }, []);
+
+  async function saveCuration(id: string) {
+    if (!curateJson) return;
+    setSaving(true);
+    try {
+      const res = await fetch(`/api/newsletters/${id}/curate`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body_json: curateJson }),
+      });
+      if (res.ok) {
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "success", message: "Curation saved" },
+        }));
+        // Refresh preview
+        setPreviewId(id);
+        setPreviewHtml(null);
+        const previewRes = await fetch(`/api/preview/${id}`);
+        const html = await previewRes.text();
+        setPreviewHtml(html);
+      } else {
+        const data = await res.json();
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "error", message: data.error || "Save failed" },
+        }));
+      }
+    } catch {
+      setFeedback((f) => ({
+        ...f,
+        [id]: { type: "error", message: "Network error" },
+      }));
+    }
+    setSaving(false);
   }
 
   async function sendReview(id: string) {
@@ -131,7 +282,7 @@ export default function AdminDashboard({
           [id]: { type: "error", message: data.error || `Failed (${res.status})` },
         }));
       }
-    } catch (err) {
+    } catch {
       setLoading(null);
       setFeedback((f) => ({
         ...f,
@@ -146,6 +297,283 @@ export default function AdminDashboard({
     sent: "#22c55e",
     failed: "#ef4444",
   };
+
+  const btnStyle = {
+    padding: "8px 16px",
+    background: "#1a1a26",
+    border: "1px solid #2a2a3a",
+    borderRadius: "6px",
+    color: "#e4e4ef",
+    fontSize: "13px",
+    cursor: "pointer",
+  } as const;
+
+  function renderCurationView(nl: NewsletterRow) {
+    if (curateId !== nl.id || !curateJson) return null;
+    const counts = includedCount(curateJson);
+
+    return (
+      <div
+        style={{
+          marginTop: "16px",
+          background: "#0e0e16",
+          border: "1px solid #2a2a3a",
+          borderRadius: "8px",
+          padding: "20px",
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            marginBottom: "16px",
+          }}
+        >
+          <h4 style={{ color: "#e4e4ef", fontSize: "15px", fontWeight: 600, margin: 0 }}>
+            Editorial Curation
+          </h4>
+          <span style={{ color: "#8888a0", fontSize: "13px" }}>
+            {counts.articles}/{counts.total} articles, {counts.quickHits}/{counts.totalQuickHits} quick hits
+          </span>
+        </div>
+
+        {/* Sections */}
+        {curateJson.sections?.map((section, sIdx) => (
+          <div key={sIdx} style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+                paddingBottom: "6px",
+                borderBottom: "1px solid #1e1e2e",
+              }}
+            >
+              <span style={{ color: "#a5a5c0", fontSize: "14px", fontWeight: 600 }}>
+                {section.emoji} {section.heading}
+                <span style={{ color: "#5a5a70", fontWeight: 400, marginLeft: "8px", fontSize: "12px" }}>
+                  ({section.articles?.filter((a) => a.include !== false).length}/{section.articles?.length})
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => setSectionAll(sIdx, true)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#22c55e",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All Yes
+                </button>
+                <button
+                  onClick={() => setSectionAll(sIdx, false)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#ef4444",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All No
+                </button>
+              </div>
+            </div>
+
+            {section.articles?.map((article, aIdx) => (
+              <div
+                key={aIdx}
+                onClick={() => toggleArticle(sIdx, aIdx)}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  padding: "10px 12px",
+                  marginBottom: "4px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  background: article.include !== false ? "#12121a" : "#0a0a10",
+                  opacity: article.include !== false ? 1 : 0.45,
+                  transition: "opacity 0.15s, background 0.15s",
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "13px",
+                    fontWeight: 700,
+                    background: article.include !== false ? "#16322a" : "#2a1a1a",
+                    color: article.include !== false ? "#22c55e" : "#ef4444",
+                    border: `1px solid ${article.include !== false ? "#22c55e33" : "#ef444433"}`,
+                  }}
+                >
+                  {article.include !== false ? "Y" : "N"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: "#e4e4ef", fontSize: "13px", fontWeight: 600, lineHeight: "1.3" }}>
+                    {article.headline}
+                  </div>
+                  <div
+                    style={{
+                      color: "#7a7a90",
+                      fontSize: "12px",
+                      marginTop: "3px",
+                      lineHeight: "1.4",
+                      overflow: "hidden",
+                      textOverflow: "ellipsis",
+                      display: "-webkit-box",
+                      WebkitLineClamp: 2,
+                      WebkitBoxOrient: "vertical",
+                    }}
+                  >
+                    {article.summary}
+                  </div>
+                  <div style={{ color: "#5a5a70", fontSize: "11px", marginTop: "3px" }}>
+                    {article.source_name}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        ))}
+
+        {/* Quick Hits */}
+        {curateJson.quick_hits && curateJson.quick_hits.length > 0 && (
+          <div style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+                paddingBottom: "6px",
+                borderBottom: "1px solid #1e1e2e",
+              }}
+            >
+              <span style={{ color: "#a5a5c0", fontSize: "14px", fontWeight: 600 }}>
+                Quick Hits
+                <span style={{ color: "#5a5a70", fontWeight: 400, marginLeft: "8px", fontSize: "12px" }}>
+                  ({curateJson.quick_hits.filter((q) => q.include !== false).length}/{curateJson.quick_hits.length})
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => setQuickHitsAll(true)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#22c55e",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All Yes
+                </button>
+                <button
+                  onClick={() => setQuickHitsAll(false)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#ef4444",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All No
+                </button>
+              </div>
+            </div>
+
+            {curateJson.quick_hits.map((qh, qIdx) => (
+              <div
+                key={qIdx}
+                onClick={() => toggleQuickHit(qIdx)}
+                style={{
+                  display: "flex",
+                  alignItems: "center",
+                  gap: "12px",
+                  padding: "8px 12px",
+                  marginBottom: "3px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  background: qh.include !== false ? "#12121a" : "#0a0a10",
+                  opacity: qh.include !== false ? 1 : 0.45,
+                  transition: "opacity 0.15s, background 0.15s",
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "5px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: qh.include !== false ? "#16322a" : "#2a1a1a",
+                    color: qh.include !== false ? "#22c55e" : "#ef4444",
+                    border: `1px solid ${qh.include !== false ? "#22c55e33" : "#ef444433"}`,
+                  }}
+                >
+                  {qh.include !== false ? "Y" : "N"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: "#e4e4ef", fontSize: "12px", lineHeight: "1.4" }}>
+                    {qh.text}
+                  </div>
+                  <div style={{ color: "#5a5a70", fontSize: "11px", marginTop: "1px" }}>
+                    {qh.source_name}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Save button */}
+        <div style={{ display: "flex", gap: "8px", justifyContent: "flex-end" }}>
+          <button
+            onClick={() => saveCuration(nl.id)}
+            disabled={saving}
+            style={{
+              padding: "10px 24px",
+              background: "#6366f1",
+              border: "none",
+              borderRadius: "6px",
+              color: "white",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: saving ? "wait" : "pointer",
+              opacity: saving ? 0.7 : 1,
+            }}
+          >
+            {saving ? "Saving..." : "Save & Preview"}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   function renderCard(nl: NewsletterRow, isDraft: boolean) {
     const fb = feedback[nl.id];
@@ -237,15 +665,21 @@ export default function AdminDashboard({
             }}
           >
             <button
+              onClick={() => openCurate(nl)}
+              style={{
+                ...btnStyle,
+                background: curateId === nl.id ? "#2a2a3a" : "#1a1a26",
+                color: "#eab308",
+                borderColor: curateId === nl.id ? "#eab308" : "#2a2a3a",
+              }}
+            >
+              {curateId === nl.id ? "Hide Curation" : "Curate"}
+            </button>
+            <button
               onClick={() => togglePreview(nl.id)}
               style={{
-                padding: "8px 16px",
+                ...btnStyle,
                 background: previewId === nl.id ? "#2a2a3a" : "#1a1a26",
-                border: "1px solid #2a2a3a",
-                borderRadius: "6px",
-                color: "#e4e4ef",
-                fontSize: "13px",
-                cursor: "pointer",
               }}
             >
               {previewId === nl.id ? "Hide Preview" : "Preview"}
@@ -254,12 +688,8 @@ export default function AdminDashboard({
               onClick={() => sendReview(nl.id)}
               disabled={loading === nl.id + "-review"}
               style={{
-                padding: "8px 16px",
-                background: "#1a1a26",
-                border: "1px solid #2a2a3a",
-                borderRadius: "6px",
+                ...btnStyle,
                 color: "#818cf8",
-                fontSize: "13px",
                 cursor:
                   loading === nl.id + "-review" ? "wait" : "pointer",
               }}
@@ -304,6 +734,8 @@ export default function AdminDashboard({
             {fb.message}
           </p>
         )}
+
+        {renderCurationView(nl)}
 
         {previewId === nl.id && (
           <div style={{ marginTop: "16px" }}>

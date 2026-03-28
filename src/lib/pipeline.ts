@@ -1,7 +1,7 @@
 import { render } from "@react-email/render";
 import { searchGameNews } from "./search";
 import { compileNewsletter } from "./claude";
-import { generateHeaderImage } from "./gemini";
+import { generateHeaderImage } from "./header-image";
 import { supabase } from "./supabase";
 import type { NewsletterContent } from "./types";
 import NewsletterEmail from "../emails/Newsletter";

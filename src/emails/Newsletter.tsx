@@ -72,13 +72,17 @@ export default function NewsletterEmail({
 
           <Hr style={divider} />
 
-          {content.sections.map((section, si) => (
+          {content.sections
+            .filter((section) => section.articles.some((a) => a.include !== false))
+            .map((section, si, filteredSections) => (
             <Section key={si} style={sectionBlock}>
               <Heading as="h2" style={sectionHeading}>
                 {section.emoji} {section.heading}
               </Heading>
 
-              {section.articles.map((article, ai) => (
+              {section.articles
+                .filter((a) => a.include !== false)
+                .map((article, ai) => (
                 <Section key={ai} style={articleBlock}>
                   <Text style={articleHeadline}>{article.headline}</Text>
                   <Text style={articleSummary}>{article.summary}</Text>
@@ -90,18 +94,20 @@ export default function NewsletterEmail({
                 </Section>
               ))}
 
-              {si < content.sections.length - 1 && <Hr style={divider} />}
+              {si < filteredSections.length - 1 && <Hr style={divider} />}
             </Section>
           ))}
 
-          {content.quick_hits && content.quick_hits.length > 0 && (
+          {content.quick_hits && content.quick_hits.filter((h) => h.include !== false).length > 0 && (
             <>
               <Hr style={divider} />
               <Section style={sectionBlock}>
                 <Heading as="h2" style={sectionHeading}>
                   ⚡ Quick Hits
                 </Heading>
-                {content.quick_hits.map((hit, hi) => (
+                {content.quick_hits
+                  .filter((h) => h.include !== false)
+                  .map((hit, hi) => (
                   <Text key={hi} style={quickHitLine}>
                     &bull;&nbsp;{hit.text}{" "}
                     <Link href={hit.source_url} style={quickHitSource}>
