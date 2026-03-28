@@ -2,7 +2,7 @@
 
 ## Project
 
-**Patch Notes** — Daily video game industry newsletter. Searches the web, compiles with Claude, generates images with Nano Banana (Gemini), sends via Resend.
+**Patch Note** (patchnote.gg) — Video game industry newsletter. AI-powered research, human-curated editorial. Searches the web, compiles with Claude, generates SVG header images, sends via Resend.
 
 ## Build Commands
 

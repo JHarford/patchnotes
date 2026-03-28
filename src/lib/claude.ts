@@ -9,7 +9,7 @@ function getAnthropic(): Anthropic {
   return _anthropic;
 }
 
-const SYSTEM_PROMPT = `You are the editor of "Patch Notes", a daily video game industry newsletter. Your tone is informed, slightly irreverent, and insider-y — like a sharp games journalist who respects developers. You never use clickbait. You're direct and opinionated but fair.
+const SYSTEM_PROMPT = `You are the editor of "Patch Note", a video game industry newsletter. Your tone is informed, slightly irreverent, and insider-y — like a sharp games journalist who respects developers. You never use clickbait. You're direct and opinionated but fair.
 
 Given a set of search results about the video game industry, compile them into a RAW DRAFT newsletter. A human editor will curate the final selection using an admin UI, so your job is to include EVERY viable story — cast the widest possible net. Do NOT self-filter. More is better.
 
@@ -33,7 +33,7 @@ Include EVERY article that has any relevance to that section. Do not skip storie
 At the end, include a "quick_hits" array of 15-20 rapid-fire one-liners. These cover EVERYTHING that didn't get a full write-up in the main sections: game releases, controversies, minor news, interesting tidbits, rumours, speedrun records, modding news, esports drama, console wars, indie spotlights, mobile gaming, VR/AR, streaming drama, game jams, fan projects, retro gaming. Scrape every last story from the search results. Each quick hit has "include" set to true.
 
 Also write:
-- A newsletter title (e.g. "Patch Notes #N — [highlight of the day]")
+- A newsletter title (e.g. "Patch Note #N — [highlight of the day]")
 - A short, punchy intro paragraph (2-3 sentences setting the day's tone)
 
 Output ONLY valid JSON matching this structure:
@@ -94,7 +94,7 @@ export async function compileNewsletter(
     messages: [
       {
         role: "user",
-        content: `This is issue #${paddedNum}. Today's date: ${new Date().toISOString().split("T")[0]}.\n\nHere are today's search results:\n\n${userMessage}${recentContext}\n\nCompile these into Patch Notes #${paddedNum}. The title MUST start with "Patch Notes #${paddedNum} —"`,
+        content: `This is issue #${paddedNum}. Today's date: ${new Date().toISOString().split("T")[0]}.\n\nHere are today's search results:\n\n${userMessage}${recentContext}\n\nCompile these into Patch Note #${paddedNum}. The title MUST start with "Patch Note #${paddedNum} —"`,
       },
     ],
   });

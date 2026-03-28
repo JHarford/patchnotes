@@ -5,7 +5,7 @@ import { generateNewsletterDraft } from "../src/lib/pipeline";
 const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
 
 async function main() {
-  console.log("=== Patch Notes Generator ===\n");
+  console.log("=== Patch Note Generator ===\n");
 
   const { id, title } = await generateNewsletterDraft();
 

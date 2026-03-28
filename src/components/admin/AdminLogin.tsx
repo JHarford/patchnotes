@@ -56,7 +56,7 @@ export default function AdminLogin() {
             marginBottom: "24px",
           }}
         >
-          PATCH NOTES ADMIN
+          PATCH NOTE ADMIN
         </h1>
         <input
           type="password"

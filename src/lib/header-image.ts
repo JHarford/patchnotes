@@ -11,7 +11,7 @@ export async function generateHeaderImage(
   console.log("Generating header image...");
 
   try {
-    // Extract issue number from title (e.g. "Patch Notes #002" → "002")
+    // Extract issue number from title (e.g. "Patch Note #002" → "002")
     const issueMatch = title.match(/#(\d+)/);
     const issueNumber = issueMatch ? issueMatch[1] : "";
 
@@ -105,8 +105,8 @@ function buildSvg(issueNumber: string, tagline: string): string {
   <rect x="597" y="260" width="3" height="40" fill="${c2}" opacity="0.8"/>
   <rect x="560" y="297" width="40" height="3" fill="${c2}" opacity="0.8"/>
 
-  <!-- PATCH NOTES wordmark -->
-  <text x="40" y="60" font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="6" fill="#ffffff" opacity="0.5">PATCH NOTES</text>
+  <!-- PATCH NOTE wordmark -->
+  <text x="40" y="60" font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="14" font-weight="700" letter-spacing="6" fill="#ffffff" opacity="0.5">PATCH NOTE</text>
 
   <!-- Issue number (large) -->
   ${issueNumber ? `<text x="40" y="${tagline ? 160 : 190}" font-family="'SF Pro Display', 'Helvetica Neue', Arial, sans-serif" font-size="100" font-weight="800" fill="url(#accent)">#${issueNumber}</text>` : ""}

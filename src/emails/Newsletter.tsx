@@ -41,13 +41,13 @@ export default function NewsletterEmail({
               <Link href={subscribeUrl} style={subscribeBannerLink}>
                 Subscribe here
               </Link>{" "}
-              to get Patch Notes daily.
+              to get Patch Note in your inbox.
             </Text>
           </Section>
 
           {/* Logo bar */}
           <Section style={logoBar}>
-            <Text style={logoText}>PATCH NOTES</Text>
+            <Text style={logoText}>PATCH NOTE</Text>
           </Section>
 
           {/* Header image */}
@@ -134,9 +134,12 @@ export default function NewsletterEmail({
           <Hr style={divider} />
 
           <Section style={footer}>
-            <Text style={footerLogo}>PATCH NOTES</Text>
+            <Text style={footerLogo}>PATCH NOTE</Text>
             <Text style={footerText}>
-              You received this because you subscribed to Patch Notes.
+              AI-powered research. Human-curated editorial.
+            </Text>
+            <Text style={footerText}>
+              You received this because you subscribed to Patch Note.
             </Text>
             <Text style={footerText}>
               <Link href={unsubscribeUrl} style={unsubLink}>

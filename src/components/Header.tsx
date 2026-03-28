@@ -23,7 +23,7 @@ export default function Header() {
           textDecoration: "none",
         }}
       >
-        PATCH NOTES
+        PATCH NOTE
       </Link>
       <Link
         href="/archive"

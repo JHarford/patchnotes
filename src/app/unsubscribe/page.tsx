@@ -10,11 +10,11 @@ export default async function UnsubscribePage({
   const messages: Record<string, { title: string; body: string }> = {
     success: {
       title: "You've been unsubscribed",
-      body: "Sorry to see you go. You won't receive any more emails from Patch Notes.",
+      body: "Sorry to see you go. You won't receive any more emails from Patch Note.",
     },
     already: {
       title: "Already unsubscribed",
-      body: "You were already unsubscribed from Patch Notes.",
+      body: "You were already unsubscribed from Patch Note.",
     },
     invalid: {
       title: "Invalid link",

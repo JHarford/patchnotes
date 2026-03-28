@@ -787,7 +787,7 @@ export default function AdminDashboard({
             letterSpacing: "2px",
           }}
         >
-          PATCH NOTES ADMIN
+          PATCH NOTE ADMIN
         </span>
         <span style={{ color: "#8888a0", fontSize: "13px" }}>
           {subscriberCount} active subscriber{subscriberCount !== 1 ? "s" : ""}
