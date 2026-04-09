@@ -202,10 +202,18 @@ export default function AdminDashboard({
       const res = await fetch(`/api/newsletters/${id}/lead-options`, {
         method: "POST",
       });
-      const data = await res.json();
-      if (res.ok) {
+      const text = await res.text();
+      let data: { ok?: boolean; body_json?: BodyJson; error?: string };
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = {
+          error: `Server returned ${res.status}: ${text.slice(0, 200)}`,
+        };
+      }
+      if (res.ok && data.body_json) {
         // Merge the returned body_json into current curate state
-        const enriched = data.body_json as BodyJson;
+        const enriched = data.body_json;
         setCurateJson((prev) => {
           if (!prev) return enriched;
           // Preserve user's current include toggles and lead selection
@@ -238,10 +246,11 @@ export default function AdminDashboard({
           [id]: { type: "error", message: data.error || "Failed to generate lead options" },
         }));
       }
-    } catch {
+    } catch (err) {
+      const message = err instanceof Error ? err.message : "Network error";
       setFeedback((f) => ({
         ...f,
-        [id]: { type: "error", message: "Network error" },
+        [id]: { type: "error", message },
       }));
     }
     setGeneratingLeads(false);

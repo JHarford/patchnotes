@@ -1,6 +1,11 @@
 import Anthropic from "@anthropic-ai/sdk";
 import type { NewsletterContent, SearchResult } from "./types";
 
+// Only the first N articles of each main section get lead_title/lead_intro.
+// Stories beyond that are vanishingly unlikely to be picked as the lead, so
+// skipping them saves Claude output tokens and latency.
+const LEAD_OPTIONS_PER_SECTION = 3;
+
 let _anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
   if (!_anthropic) {
@@ -25,8 +30,14 @@ For each article in a main section:
 - Write a 2-3 sentence editorialized summary that tells the reader WHY this matters
 - Include the source URL and source name
 - Set "include" to true (the editor will toggle off what they don't want)
-- Write a "lead_title": the full newsletter title to use IF the editor chose THIS story as the lead. MUST start with "Patch Note #NNN — " (matching the main title's issue number) and be short, punchy, and centred on this specific story.
-- Write a "lead_intro": the 2-3 sentence intro paragraph to use IF this story is the lead. It should explicitly frame today's issue around this story — not just mention it, but lead with it. Keep the tone consistent with the main intro.
+
+Within each section, put the STRONGEST / most newsworthy stories first — the top of each section is treated as the "lead candidates".
+
+For ONLY the FIRST ${LEAD_OPTIONS_PER_SECTION} articles of each main section (the lead candidates), ALSO write:
+- "lead_title": the full newsletter title to use IF the editor chose THIS story as the lead. MUST start with "Patch Note #NNN — " (matching the main title's issue number) and be short, punchy, and centred on this specific story.
+- "lead_intro": the 2-3 sentence intro paragraph to use IF this story is the lead. It should explicitly frame today's issue around this story — not just mention it, but lead with it. Keep the tone consistent with the main intro.
+
+For the 4th article onward in each section, OMIT lead_title and lead_intro entirely (do not include empty strings — leave the fields out of the JSON).
 
 Include EVERY article that has any relevance to that section. Do not skip stories for being minor or niche — the editor decides what stays.
 
@@ -54,8 +65,8 @@ Output ONLY valid JSON matching this structure:
           "source_url": "string",
           "source_name": "string",
           "include": true,
-          "lead_title": "string (newsletter title if this were the lead)",
-          "lead_intro": "string (newsletter intro if this were the lead)"
+          "lead_title": "string (ONLY for first 3 articles per section; omit otherwise)",
+          "lead_intro": "string (ONLY for first 3 articles per section; omit otherwise)"
         }
       ]
     }
@@ -134,7 +145,8 @@ export async function generateLeadOptions(
   const articleList: { key: string; headline: string; summary: string }[] = [];
   for (let si = 0; si < content.sections.length; si++) {
     const section = content.sections[si];
-    for (let ai = 0; ai < section.articles.length; ai++) {
+    const limit = Math.min(section.articles.length, LEAD_OPTIONS_PER_SECTION);
+    for (let ai = 0; ai < limit; ai++) {
       const a = section.articles[ai];
       articleList.push({
         key: `${si}-${ai}`,
