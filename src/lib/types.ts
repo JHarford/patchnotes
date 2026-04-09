@@ -12,6 +12,10 @@ export interface Article {
   source_url: string;
   source_name: string;
   include?: boolean;
+  /** Newsletter title to use if this article is chosen as the lead story. */
+  lead_title?: string;
+  /** Newsletter intro blurb to use if this article is chosen as the lead story. */
+  lead_intro?: string;
 }
 
 export interface NewsletterSection {
@@ -35,6 +39,8 @@ export interface NewsletterContent {
   sections: NewsletterSection[];
   quick_hits?: QuickHit[];
   header_image_url?: string;
+  /** Which article is currently the lead, as "sectionIdx-articleIdx" (e.g. "0-2"). */
+  lead_article_key?: string;
 }
 
 export interface Subscriber {

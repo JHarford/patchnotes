@@ -87,3 +87,22 @@ export async function searchGameNews(): Promise<SearchResult[]> {
 
   return deduped;
 }
+
+export async function searchFocusTopic(topic: string): Promise<SearchResult[]> {
+  console.log(`Running focused searches for: "${topic}"`);
+
+  // Widen time window for focus topics — niche policy stories may not hit daily news
+  const queries = [topic, `${topic} news`, `${topic} 2026`];
+  const results = await Promise.all(queries.map((q) => braveSearch(q, "pm")));
+
+  const flat = results.flat();
+  const seen = new Set<string>();
+  const deduped = flat.filter((r) => {
+    if (seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+
+  console.log(`Focus search found ${deduped.length} articles for "${topic}"`);
+  return deduped;
+}

@@ -8,6 +8,8 @@ interface Article {
   source_url: string;
   source_name: string;
   include?: boolean;
+  lead_title?: string;
+  lead_intro?: string;
 }
 
 interface QuickHit {
@@ -29,6 +31,7 @@ interface BodyJson {
   intro?: string;
   sections?: Section[];
   quick_hits?: QuickHit[];
+  lead_article_key?: string;
 }
 
 interface NewsletterRow {
@@ -62,6 +65,7 @@ export default function AdminDashboard({
   const [curateId, setCurateId] = useState<string | null>(null);
   const [curateJson, setCurateJson] = useState<BodyJson | null>(null);
   const [saving, setSaving] = useState(false);
+  const [generatingLeads, setGeneratingLeads] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<
@@ -177,6 +181,71 @@ export default function AdminDashboard({
       return next;
     });
   }, []);
+
+  const setLeadArticle = useCallback((sectionIdx: number, articleIdx: number) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      const article = next.sections?.[sectionIdx]?.articles?.[articleIdx];
+      if (!article || !article.lead_title || !article.lead_intro) return prev;
+      next.title = article.lead_title;
+      next.intro = article.lead_intro;
+      next.lead_article_key = `${sectionIdx}-${articleIdx}`;
+      article.include = true;
+      return next;
+    });
+  }, []);
+
+  async function generateLeadOptionsForDraft(id: string) {
+    setGeneratingLeads(true);
+    try {
+      const res = await fetch(`/api/newsletters/${id}/lead-options`, {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        // Merge the returned body_json into current curate state
+        const enriched = data.body_json as BodyJson;
+        setCurateJson((prev) => {
+          if (!prev) return enriched;
+          // Preserve user's current include toggles and lead selection
+          const next = JSON.parse(JSON.stringify(enriched)) as BodyJson;
+          next.title = prev.title;
+          next.intro = prev.intro;
+          next.lead_article_key = prev.lead_article_key;
+          const prevSections = prev.sections || [];
+          next.sections?.forEach((s, si) => {
+            s.articles?.forEach((a, ai) => {
+              const prevArticle = prevSections[si]?.articles?.[ai];
+              if (prevArticle) a.include = prevArticle.include;
+            });
+          });
+          if (prev.quick_hits && next.quick_hits) {
+            next.quick_hits.forEach((q, qi) => {
+              const prevQ = prev.quick_hits?.[qi];
+              if (prevQ) q.include = prevQ.include;
+            });
+          }
+          return next;
+        });
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "success", message: "Lead options generated" },
+        }));
+      } else {
+        setFeedback((f) => ({
+          ...f,
+          [id]: { type: "error", message: data.error || "Failed to generate lead options" },
+        }));
+      }
+    } catch {
+      setFeedback((f) => ({
+        ...f,
+        [id]: { type: "error", message: "Network error" },
+      }));
+    }
+    setGeneratingLeads(false);
+  }
 
   async function saveCuration(id: string) {
     if (!curateJson) return;
@@ -312,6 +381,11 @@ export default function AdminDashboard({
     if (curateId !== nl.id || !curateJson) return null;
     const counts = includedCount(curateJson);
 
+    // Detect whether any article has lead options
+    const anyLeadOptions = (curateJson.sections || []).some((s) =>
+      (s.articles || []).some((a) => a.lead_title && a.lead_intro)
+    );
+
     return (
       <div
         style={{
@@ -336,6 +410,85 @@ export default function AdminDashboard({
           <span style={{ color: "#8888a0", fontSize: "13px" }}>
             {counts.articles}/{counts.total} articles, {counts.quickHits}/{counts.totalQuickHits} quick hits
           </span>
+        </div>
+
+        {/* Live headline + intro preview */}
+        <div
+          style={{
+            background: "#12121a",
+            border: "1px solid #2a2a3a",
+            borderRadius: "6px",
+            padding: "14px 16px",
+            marginBottom: "20px",
+          }}
+        >
+          <div
+            style={{
+              color: "#8888a0",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: "6px",
+            }}
+          >
+            Headline
+          </div>
+          <div
+            style={{
+              color: "#e4e4ef",
+              fontSize: "16px",
+              fontWeight: 700,
+              lineHeight: "1.3",
+              marginBottom: "10px",
+            }}
+          >
+            {curateJson.title || "(no title)"}
+          </div>
+          <div
+            style={{
+              color: "#8888a0",
+              fontSize: "10px",
+              fontWeight: 700,
+              letterSpacing: "1px",
+              textTransform: "uppercase",
+              marginBottom: "6px",
+            }}
+          >
+            Intro blurb
+          </div>
+          <div style={{ color: "#b0b0c0", fontSize: "13px", lineHeight: "1.6" }}>
+            {curateJson.intro || "(no intro)"}
+          </div>
+          {!anyLeadOptions && (
+            <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px" }}>
+              <span style={{ color: "#eab308", fontSize: "11px" }}>
+                This draft has no lead options yet.
+              </span>
+              <button
+                onClick={() => generateLeadOptionsForDraft(nl.id)}
+                disabled={generatingLeads}
+                style={{
+                  padding: "5px 10px",
+                  background: "#1a1a26",
+                  border: "1px solid #eab308",
+                  borderRadius: "4px",
+                  color: "#eab308",
+                  fontSize: "11px",
+                  fontWeight: 600,
+                  cursor: generatingLeads ? "wait" : "pointer",
+                  opacity: generatingLeads ? 0.6 : 1,
+                }}
+              >
+                {generatingLeads ? "Generating..." : "Generate lead options"}
+              </button>
+            </div>
+          )}
+          {anyLeadOptions && curateJson.lead_article_key && (
+            <div style={{ marginTop: "10px", fontSize: "11px", color: "#eab308" }}>
+              ★ Lead: article {curateJson.lead_article_key}
+            </div>
+          )}
         </div>
 
         {/* Sections */}
@@ -389,19 +542,23 @@ export default function AdminDashboard({
               </div>
             </div>
 
-            {section.articles?.map((article, aIdx) => (
+            {section.articles?.map((article, aIdx) => {
+              const isLead = curateJson.lead_article_key === `${sIdx}-${aIdx}`;
+              const hasLeadOption = !!(article.lead_title && article.lead_intro);
+              return (
               <div
                 key={aIdx}
                 onClick={() => toggleArticle(sIdx, aIdx)}
                 style={{
                   display: "flex",
                   alignItems: "flex-start",
-                  gap: "12px",
+                  gap: "10px",
                   padding: "10px 12px",
                   marginBottom: "4px",
                   borderRadius: "6px",
                   cursor: "pointer",
                   background: article.include !== false ? "#12121a" : "#0a0a10",
+                  border: isLead ? "1px solid #eab308" : "1px solid transparent",
                   opacity: article.include !== false ? 1 : 0.45,
                   transition: "opacity 0.15s, background 0.15s",
                 }}
@@ -424,9 +581,60 @@ export default function AdminDashboard({
                 >
                   {article.include !== false ? "Y" : "N"}
                 </span>
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    if (hasLeadOption) setLeadArticle(sIdx, aIdx);
+                  }}
+                  disabled={!hasLeadOption}
+                  title={
+                    hasLeadOption
+                      ? isLead
+                        ? "Current lead story"
+                        : "Set as lead story"
+                      : "No lead option generated for this article"
+                  }
+                  style={{
+                    flexShrink: 0,
+                    width: "28px",
+                    height: "28px",
+                    borderRadius: "6px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "15px",
+                    fontWeight: 700,
+                    background: isLead ? "#3a2e08" : "transparent",
+                    color: isLead ? "#eab308" : hasLeadOption ? "#5a5a70" : "#2a2a3a",
+                    border: `1px solid ${isLead ? "#eab308" : "#2a2a3a"}`,
+                    cursor: hasLeadOption ? "pointer" : "not-allowed",
+                    padding: 0,
+                    lineHeight: 1,
+                  }}
+                >
+                  ★
+                </button>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ color: "#e4e4ef", fontSize: "13px", fontWeight: 600, lineHeight: "1.3" }}>
                     {article.headline}
+                    {isLead && (
+                      <span
+                        style={{
+                          marginLeft: "8px",
+                          padding: "1px 6px",
+                          fontSize: "9px",
+                          fontWeight: 700,
+                          letterSpacing: "1px",
+                          background: "#3a2e08",
+                          color: "#eab308",
+                          border: "1px solid #eab308",
+                          borderRadius: "3px",
+                          verticalAlign: "middle",
+                        }}
+                      >
+                        LEAD
+                      </span>
+                    )}
                   </div>
                   <div
                     style={{
@@ -448,7 +656,8 @@ export default function AdminDashboard({
                   </div>
                 </div>
               </div>
-            ))}
+              );
+            })}
           </div>
         ))}
 

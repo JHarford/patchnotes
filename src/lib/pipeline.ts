@@ -1,15 +1,19 @@
 import { render } from "@react-email/render";
-import { searchGameNews } from "./search";
+import { searchGameNews, searchFocusTopic } from "./search";
 import { compileNewsletter } from "./claude";
 import { generateHeaderImage } from "./header-image";
 import { supabase } from "./supabase";
-import type { NewsletterContent } from "./types";
+import type { NewsletterContent, SearchResult } from "./types";
 import NewsletterEmail from "../emails/Newsletter";
 
-export async function generateNewsletterDraft(): Promise<{
+export async function generateNewsletterDraft(options?: {
+  focus?: string;
+}): Promise<{
   id: string;
   title: string;
 }> {
+  const focus = options?.focus;
+
   // 1. Get previously used source URLs (last 14 days)
   const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString();
   const { data: recentNewsletters } = await supabase
@@ -26,7 +30,18 @@ export async function generateNewsletterDraft(): Promise<{
 
   // 2. Search and filter out already-used stories
   const rawResults = await searchGameNews();
-  const results = rawResults.filter((r) => !usedUrls.has(r.url));
+  const combined: SearchResult[] = [...rawResults];
+  if (focus) {
+    const focusResults = await searchFocusTopic(focus);
+    const seen = new Set(combined.map((r) => r.url));
+    for (const r of focusResults) {
+      if (!seen.has(r.url)) {
+        combined.push(r);
+        seen.add(r.url);
+      }
+    }
+  }
+  const results = combined.filter((r) => !usedUrls.has(r.url));
 
   if (usedUrls.size > 0) {
     console.log(`Filtered out ${rawResults.length - results.length} previously used articles`);
@@ -56,7 +71,7 @@ export async function generateNewsletterDraft(): Promise<{
   const issueNumber = (count || 0) + 1;
 
   // 3. Compile with Claude
-  const content = await compileNewsletter(results, issueNumber, recentHeadlines);
+  const content = await compileNewsletter(results, issueNumber, recentHeadlines, focus);
 
   // 3. Generate header image themed by lead story
   const leadStory =
