@@ -9,7 +9,13 @@ const LEAD_OPTIONS_PER_SECTION = 3;
 let _anthropic: Anthropic | null = null;
 function getAnthropic(): Anthropic {
   if (!_anthropic) {
-    _anthropic = new Anthropic();
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    if (!apiKey) {
+      throw new Error(
+        "ANTHROPIC_API_KEY is not set. Add it to .env.local for local dev, or to your Vercel project env vars for production. If you just added it, restart the Next.js dev server."
+      );
+    }
+    _anthropic = new Anthropic({ apiKey });
   }
   return _anthropic;
 }
