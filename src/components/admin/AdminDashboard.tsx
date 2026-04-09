@@ -197,10 +197,15 @@ export default function AdminDashboard({
   }, []);
 
   async function generateLeadOptionsForDraft(id: string) {
+    if (!curateJson) return;
     setGeneratingLeads(true);
     try {
       const res = await fetch(`/api/newsletters/${id}/lead-options`, {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        // Send the current (unsaved) curation state so Claude generates lead
+        // options based on which articles are currently toggled Y.
+        body: JSON.stringify({ body_json: curateJson }),
       });
       const text = await res.text();
       let data: { ok?: boolean; body_json?: BodyJson; error?: string };
@@ -212,30 +217,9 @@ export default function AdminDashboard({
         };
       }
       if (res.ok && data.body_json) {
-        // Merge the returned body_json into current curate state
-        const enriched = data.body_json;
-        setCurateJson((prev) => {
-          if (!prev) return enriched;
-          // Preserve user's current include toggles and lead selection
-          const next = JSON.parse(JSON.stringify(enriched)) as BodyJson;
-          next.title = prev.title;
-          next.intro = prev.intro;
-          next.lead_article_key = prev.lead_article_key;
-          const prevSections = prev.sections || [];
-          next.sections?.forEach((s, si) => {
-            s.articles?.forEach((a, ai) => {
-              const prevArticle = prevSections[si]?.articles?.[ai];
-              if (prevArticle) a.include = prevArticle.include;
-            });
-          });
-          if (prev.quick_hits && next.quick_hits) {
-            next.quick_hits.forEach((q, qi) => {
-              const prevQ = prev.quick_hits?.[qi];
-              if (prevQ) q.include = prevQ.include;
-            });
-          }
-          return next;
-        });
+        // Server echoes our include toggles back, only adding lead_title/
+        // lead_intro to the top-N Y articles per section. Direct replace.
+        setCurateJson(data.body_json);
         setFeedback((f) => ({
           ...f,
           [id]: { type: "success", message: "Lead options generated" },
@@ -469,30 +453,32 @@ export default function AdminDashboard({
           <div style={{ color: "#b0b0c0", fontSize: "13px", lineHeight: "1.6" }}>
             {curateJson.intro || "(no intro)"}
           </div>
-          {!anyLeadOptions && (
-            <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px" }}>
-              <span style={{ color: "#eab308", fontSize: "11px" }}>
-                This draft has no lead options yet.
-              </span>
-              <button
-                onClick={() => generateLeadOptionsForDraft(nl.id)}
-                disabled={generatingLeads}
-                style={{
-                  padding: "5px 10px",
-                  background: "#1a1a26",
-                  border: "1px solid #eab308",
-                  borderRadius: "4px",
-                  color: "#eab308",
-                  fontSize: "11px",
-                  fontWeight: 600,
-                  cursor: generatingLeads ? "wait" : "pointer",
-                  opacity: generatingLeads ? 0.6 : 1,
-                }}
-              >
-                {generatingLeads ? "Generating..." : "Generate lead options"}
-              </button>
-            </div>
-          )}
+          <div style={{ marginTop: "12px", display: "flex", alignItems: "center", gap: "10px", flexWrap: "wrap" }}>
+            <button
+              onClick={() => generateLeadOptionsForDraft(nl.id)}
+              disabled={generatingLeads}
+              style={{
+                padding: "5px 10px",
+                background: "#1a1a26",
+                border: "1px solid #eab308",
+                borderRadius: "4px",
+                color: "#eab308",
+                fontSize: "11px",
+                fontWeight: 600,
+                cursor: generatingLeads ? "wait" : "pointer",
+                opacity: generatingLeads ? 0.6 : 1,
+              }}
+            >
+              {generatingLeads
+                ? "Generating..."
+                : anyLeadOptions
+                ? "Regenerate lead options (based on current selection)"
+                : "Generate lead options"}
+            </button>
+            <span style={{ color: "#6a6a80", fontSize: "10px" }}>
+              Uses your current Y/N toggles. Stars only appear on articles with lead options.
+            </span>
+          </div>
           {anyLeadOptions && curateJson.lead_article_key && (
             <div style={{ marginTop: "10px", fontSize: "11px", color: "#eab308" }}>
               ★ Lead: article {curateJson.lead_article_key}

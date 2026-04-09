@@ -41,7 +41,7 @@ Within each section, put the STRONGEST / most newsworthy stories first — the t
 
 For ONLY the FIRST ${LEAD_OPTIONS_PER_SECTION} articles of each main section (the lead candidates), ALSO write:
 - "lead_title": the full newsletter title to use IF the editor chose THIS story as the lead. MUST start with "Patch Note #NNN — " (matching the main title's issue number) and be short, punchy, and centred on this specific story.
-- "lead_intro": the 2-3 sentence intro paragraph to use IF this story is the lead. It should explicitly frame today's issue around this story — not just mention it, but lead with it. Keep the tone consistent with the main intro.
+- "lead_intro": the 2-3 sentence intro paragraph to use IF this story is the lead. Lead with this story, then briefly tease 2-3 of the OTHER most newsworthy stories from OTHER sections — enough to hint at what else is inside today's issue. Keep the tone consistent with the main intro.
 
 For the 4th article onward in each section, OMIT lead_title and lead_intro entirely (do not include empty strings — leave the fields out of the JSON).
 
@@ -140,44 +140,80 @@ export async function compileNewsletter(
 }
 
 /**
- * Enriches an existing newsletter draft with per-article lead_title/lead_intro
- * fields. Used to retrofit drafts that were generated before lead-options support.
+ * Generates per-article lead_title/lead_intro based on the current curation
+ * state. Only the top N Y-included articles per section get lead options, and
+ * each lead_intro teases a handful of the OTHER Y-included stories so it feels
+ * tailored to what the editor actually kept.
+ *
+ * Stale lead options on non-candidate articles are cleared so the UI only
+ * surfaces stars whose intros reflect the current selection.
  */
 export async function generateLeadOptions(
   content: NewsletterContent
 ): Promise<NewsletterContent> {
-  console.log("Generating lead options for existing draft...");
+  console.log("Generating lead options for current selection...");
 
-  const articleList: { key: string; headline: string; summary: string }[] = [];
+  // Walk included (Y) articles. Collect top-N-per-section as candidates and
+  // every included headline (with its section) for use as "other stories"
+  // context when Claude writes each lead_intro.
+  const candidates: {
+    key: string;
+    sectionHeading: string;
+    headline: string;
+    summary: string;
+  }[] = [];
+  const includedHeadlines: { key: string; section: string; headline: string }[] = [];
+
   for (let si = 0; si < content.sections.length; si++) {
     const section = content.sections[si];
-    const limit = Math.min(section.articles.length, LEAD_OPTIONS_PER_SECTION);
-    for (let ai = 0; ai < limit; ai++) {
+    let pickedInSection = 0;
+    for (let ai = 0; ai < section.articles.length; ai++) {
       const a = section.articles[ai];
-      articleList.push({
-        key: `${si}-${ai}`,
+      if (a.include === false) continue;
+      const key = `${si}-${ai}`;
+      includedHeadlines.push({
+        key,
+        section: section.heading,
         headline: a.headline,
-        summary: a.summary,
       });
+      if (pickedInSection < LEAD_OPTIONS_PER_SECTION) {
+        candidates.push({
+          key,
+          sectionHeading: section.heading,
+          headline: a.headline,
+          summary: a.summary,
+        });
+        pickedInSection++;
+      }
     }
   }
 
-  if (articleList.length === 0) return content;
+  if (candidates.length === 0) return content;
 
-  const paddedNum =
-    content.title.match(/#(\d+)/)?.[1] || "001";
+  const paddedNum = content.title.match(/#(\d+)/)?.[1] || "001";
 
-  const prompt = `You are the editor of "Patch Note", a video game industry newsletter. I have an existing draft and need you to generate "lead options" for each article — i.e. for each article, the newsletter title and intro paragraph that would be used if THAT article were chosen as the lead story.
+  const prompt = `You are the editor of "Patch Note", a video game industry newsletter. Your tone is informed, slightly irreverent, and insider-y — like a sharp games journalist who respects developers. You never use clickbait.
 
-Current newsletter title: ${content.title}
-Current intro: ${content.intro}
+I have a draft that the editor has curated. For each LEAD CANDIDATE below, generate the newsletter title and intro paragraph that would be used if THAT story was chosen as the lead.
 
-Articles (keyed by "sectionIdx-articleIdx"):
-${articleList.map((a) => `[${a.key}] ${a.headline}\n${a.summary}`).join("\n\n")}
+## LEAD CANDIDATES (keyed by "sectionIdx-articleIdx"):
+${candidates
+  .map(
+    (c) =>
+      `[${c.key}] (${c.sectionHeading})\n${c.headline}\n${c.summary}`
+  )
+  .join("\n\n")}
 
-For EACH article, output:
-- lead_title: MUST start with "Patch Note #${paddedNum} —" and centre on that specific story (short & punchy)
-- lead_intro: 2-3 sentence intro that explicitly frames today's issue around that story
+## OTHER INCLUDED STORIES (these are also in today's issue — tease 2-3 of them in each lead_intro to hint at what's inside):
+${includedHeadlines
+  .map((h) => `[${h.key}] (${h.section}) ${h.headline}`)
+  .join("\n")}
+
+For EACH lead candidate, output:
+- lead_title: MUST start with "Patch Note #${paddedNum} —" and centre on that specific story. Short, punchy, no clickbait.
+- lead_intro: 2-3 sentences. Sentence 1 leads with the candidate story. Sentences 2-3 briefly tease 2-3 of the OTHER INCLUDED STORIES (pick the most newsworthy, prefer stories from different sections to the lead). Don't just list them — weave them in naturally.
+
+Do NOT reuse the same tease combination across every candidate — vary which "other stories" you pick so each intro feels distinct.
 
 Output ONLY valid JSON:
 {
@@ -205,14 +241,20 @@ Output ONLY valid JSON:
 
   const byKey = new Map(parsed.options.map((o) => [o.key, o]));
 
-  // Deep clone and apply
+  // Deep clone and apply. Clear stale lead options from any article that isn't
+  // a current candidate — their intros would reference a stale selection.
   const next: NewsletterContent = JSON.parse(JSON.stringify(content));
   for (let si = 0; si < next.sections.length; si++) {
     for (let ai = 0; ai < next.sections[si].articles.length; ai++) {
-      const opt = byKey.get(`${si}-${ai}`);
+      const key = `${si}-${ai}`;
+      const article = next.sections[si].articles[ai];
+      const opt = byKey.get(key);
       if (opt) {
-        next.sections[si].articles[ai].lead_title = opt.lead_title;
-        next.sections[si].articles[ai].lead_intro = opt.lead_intro;
+        article.lead_title = opt.lead_title;
+        article.lead_intro = opt.lead_intro;
+      } else {
+        delete article.lead_title;
+        delete article.lead_intro;
       }
     }
   }
