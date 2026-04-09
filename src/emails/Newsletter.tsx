@@ -5,7 +5,6 @@ import {
   Heading,
   Hr,
   Html,
-  Img,
   Link,
   Preview,
   Section,
@@ -49,17 +48,6 @@ export default function NewsletterEmail({
           <Section style={logoBar}>
             <Text style={logoText}>PATCH NOTE</Text>
           </Section>
-
-          {/* Header image */}
-          {content.header_image_url && (
-            <Img
-              src={content.header_image_url}
-              alt={content.title}
-              width="600"
-              height="400"
-              style={headerImage}
-            />
-          )}
 
           <Section style={headerSection}>
             <Text style={date}>{content.date}</Text>
@@ -200,12 +188,6 @@ const logoText = {
   fontSize: "18px",
   letterSpacing: "4px",
   margin: "0",
-};
-
-const headerImage = {
-  width: "100%",
-  height: "auto",
-  display: "block" as const,
 };
 
 const headerSection = {

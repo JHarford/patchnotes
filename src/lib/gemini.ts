@@ -65,17 +65,3 @@ export async function generateImage(
   }
 }
 
-export async function generateHeaderImage(
-  title: string,
-  leadStory: string
-): Promise<string | null> {
-  console.log("Generating header image themed by lead story...");
-
-  const prompt = `Create a stylised, abstract digital illustration inspired by this video game industry headline: "${leadStory}".
-
-Style: Bold, graphic, abstract. Think editorial illustration meets concept art. Dark background (#0a0a0f), vibrant accent colours (electric indigo, neon cyan, hot magenta). Geometric shapes, light trails, silhouettes. Moody and atmospheric.
-
-Do NOT include any text, words, letters, or logos in the image. Pure visual art only.`;
-
-  return generateImage(prompt, "3:2");
-}

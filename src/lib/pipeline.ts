@@ -1,7 +1,6 @@
 import { render } from "@react-email/render";
 import { searchGameNews, searchFocusTopic } from "./search";
 import { compileNewsletter } from "./claude";
-import { generateHeaderImage } from "./header-image";
 import { supabase } from "./supabase";
 import type { NewsletterContent, SearchResult } from "./types";
 import NewsletterEmail from "../emails/Newsletter";
@@ -73,15 +72,6 @@ export async function generateNewsletterDraft(options?: {
   // 3. Compile with Claude
   const content = await compileNewsletter(results, issueNumber, recentHeadlines, focus);
 
-  // 3. Generate header image themed by lead story
-  const leadStory =
-    content.sections[0]?.articles[0]?.headline || content.title;
-  const headerUrl = await generateHeaderImage(content.title, leadStory);
-
-  if (headerUrl) {
-    content.header_image_url = headerUrl;
-  }
-
   // 4. Render HTML
   console.log("Rendering HTML...");
   const html = await renderNewsletterHtml(content, "#");
@@ -95,7 +85,6 @@ export async function generateNewsletterDraft(options?: {
       subject: content.title,
       body_html: html,
       body_json: content,
-      header_image_url: content.header_image_url || null,
       status: "draft",
       sources,
     })
