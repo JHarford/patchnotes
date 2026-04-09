@@ -62,7 +62,6 @@ export default function NewsletterEmail({
           )}
 
           <Section style={headerSection}>
-            <Heading style={title}>{content.title}</Heading>
             <Text style={date}>{content.date}</Text>
           </Section>
 
@@ -211,14 +210,6 @@ const headerImage = {
 
 const headerSection = {
   padding: "24px 24px 12px",
-};
-
-const title = {
-  color: "#1a1a2e",
-  fontSize: "22px",
-  fontWeight: "700" as const,
-  margin: "0 0 8px",
-  lineHeight: "1.3",
 };
 
 const date = {
