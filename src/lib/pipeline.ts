@@ -18,6 +18,7 @@ export async function generateNewsletterDraft(options?: {
   const { data: recentNewsletters } = await supabase
     .from("newsletters")
     .select("sources, body_json")
+    .eq("status", "sent")
     .gte("created_at", twoWeeksAgo);
 
   const usedUrls = new Set<string>();
