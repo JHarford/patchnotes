@@ -68,9 +68,43 @@ export default function AdminDashboard({
   const [generatingLeads, setGeneratingLeads] = useState(false);
   const [loading, setLoading] = useState<string | null>(null);
   const [confirmSend, setConfirmSend] = useState<string | null>(null);
+  const [generating, setGenerating] = useState(false);
+  const [generateMsg, setGenerateMsg] = useState<{
+    type: "success" | "error";
+    message: string;
+  } | null>(null);
   const [feedback, setFeedback] = useState<
     Record<string, { type: "success" | "error"; message: string }>
   >({});
+
+  async function generateToday() {
+    setGenerating(true);
+    setGenerateMsg(null);
+    try {
+      const res = await fetch("/api/admin/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({}),
+      });
+      const data = await res.json();
+      if (res.ok) {
+        setGenerateMsg({
+          type: "success",
+          message: `Generated: ${data.title}`,
+        });
+        // Reload to show the new draft
+        setTimeout(() => window.location.reload(), 1500);
+      } else {
+        setGenerateMsg({
+          type: "error",
+          message: data.error || "Generation failed",
+        });
+      }
+    } catch {
+      setGenerateMsg({ type: "error", message: "Network error" });
+    }
+    setGenerating(false);
+  }
 
   const drafts = newsletters.filter((n) => n.status === "draft");
   const sent = newsletters.filter((n) => n.status === "sent" || n.status === "sending");
@@ -1001,19 +1035,56 @@ export default function AdminDashboard({
       <main
         style={{ maxWidth: "800px", margin: "0 auto", padding: "32px 24px" }}
       >
-        <h2
+        <div
           style={{
-            fontSize: "20px",
-            fontWeight: 700,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
             marginBottom: "16px",
-            color: "#e4e4ef",
           }}
         >
-          Drafts
-        </h2>
+          <h2
+            style={{
+              fontSize: "20px",
+              fontWeight: 700,
+              color: "#e4e4ef",
+              margin: 0,
+            }}
+          >
+            Drafts
+          </h2>
+          <button
+            onClick={generateToday}
+            disabled={generating}
+            style={{
+              padding: "10px 20px",
+              background: generating ? "#1a1a26" : "#6366f1",
+              border: generating ? "1px solid #6366f1" : "none",
+              borderRadius: "6px",
+              color: "white",
+              fontSize: "13px",
+              fontWeight: 600,
+              cursor: generating ? "wait" : "pointer",
+              opacity: generating ? 0.7 : 1,
+            }}
+          >
+            {generating ? "Generating..." : "Generate Today"}
+          </button>
+        </div>
+        {generateMsg && (
+          <p
+            style={{
+              fontSize: "13px",
+              color: generateMsg.type === "success" ? "#22c55e" : "#ef4444",
+              marginBottom: "12px",
+            }}
+          >
+            {generateMsg.message}
+          </p>
+        )}
         {drafts.length === 0 ? (
           <p style={{ color: "#8888a0", marginBottom: "32px" }}>
-            No drafts. Run <code>npm run generate</code> to create one.
+            No drafts yet.
           </p>
         ) : (
           <div style={{ marginBottom: "32px" }}>

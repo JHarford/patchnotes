@@ -15,7 +15,7 @@ function getAnthropic(): Anthropic {
         "ANTHROPIC_API_KEY is not set. Add it to .env.local for local dev, or to your Vercel project env vars for production. If you just added it, restart the Next.js dev server."
       );
     }
-    _anthropic = new Anthropic({ apiKey });
+    _anthropic = new Anthropic({ apiKey, timeout: 5 * 60 * 1000 });
   }
   return _anthropic;
 }
@@ -114,17 +114,37 @@ export async function compileNewsletter(
     focusContext = `\n\nEDITORIAL FOCUS: This issue should feature a couple of stories (at least 2 if the source material supports it) specifically about "${focus}". These belong in "Industry Intel" unless a more appropriate section exists. Do not force stories that are not genuinely related, but prioritise any that are and give them proper editorial weight.`;
   }
 
-  const response = await getAnthropic().messages.create({
-    model: "claude-sonnet-4-20250514",
-    max_tokens: 16384,
-    system: SYSTEM_PROMPT,
-    messages: [
-      {
-        role: "user",
-        content: `This is issue #${paddedNum}. Today's date: ${new Date().toISOString().split("T")[0]}.\n\nHere are today's search results:\n\n${userMessage}${recentContext}${focusContext}\n\nCompile these into Patch Note #${paddedNum}. The title MUST start with "Patch Note #${paddedNum} —"`,
-      },
-    ],
-  });
+  const makeRequest = () =>
+    getAnthropic().messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 16384,
+      system: SYSTEM_PROMPT,
+      messages: [
+        {
+          role: "user",
+          content: `This is issue #${paddedNum}. Today's date: ${new Date().toISOString().split("T")[0]}.\n\nHere are today's search results:\n\n${userMessage}${recentContext}${focusContext}\n\nCompile these into Patch Note #${paddedNum}. The title MUST start with "Patch Note #${paddedNum} —"`,
+        },
+      ],
+    });
+
+  let response;
+  const maxRetries = 3;
+  for (let attempt = 1; attempt <= maxRetries; attempt++) {
+    try {
+      response = await makeRequest();
+      break;
+    } catch (err: unknown) {
+      const isConnection =
+        err instanceof Error && (err.message.includes("Connection error") || err.message.includes("ETIMEDOUT"));
+      if (isConnection && attempt < maxRetries) {
+        console.log(`Connection failed (attempt ${attempt}/${maxRetries}), retrying in 5s...`);
+        await new Promise((r) => setTimeout(r, 5000));
+        continue;
+      }
+      throw err;
+    }
+  }
+  if (!response) throw new Error("Failed after all retries");
 
   const text =
     response.content[0].type === "text" ? response.content[0].text : "";
