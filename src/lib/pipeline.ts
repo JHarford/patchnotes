@@ -4,6 +4,7 @@ import { compileNewsletter } from "./claude";
 import { supabase } from "./supabase";
 import type { NewsletterContent, SearchResult } from "./types";
 import NewsletterEmail from "../emails/Newsletter";
+import { getAppUrl } from "./app-url";
 
 export async function generateNewsletterDraft(options?: {
   focus?: string;
@@ -105,7 +106,7 @@ export async function renderNewsletterHtml(
   unsubscribeUrl: string
 ): Promise<string> {
   const html = await render(
-    NewsletterEmail({ content, unsubscribeUrl, subscribeUrl: process.env.NEXT_PUBLIC_APP_URL || "https://patchnote.gg" })
+    NewsletterEmail({ content, unsubscribeUrl, subscribeUrl: getAppUrl() })
   );
   return html;
 }

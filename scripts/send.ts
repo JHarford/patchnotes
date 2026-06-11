@@ -2,6 +2,7 @@ import { config } from "dotenv";
 config({ path: ".env.local" });
 import { createInterface } from "readline";
 import { supabase } from "../src/lib/supabase";
+import { getAppUrl } from "../src/lib/app-url";
 
 const id = process.argv[2];
 
@@ -55,7 +56,7 @@ async function main() {
   }
 
   // Call the send API
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const res = await fetch(`${appUrl}/api/newsletters/${id}/send`, {
     method: "POST",
   });

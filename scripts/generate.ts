@@ -1,8 +1,9 @@
 import { config } from "dotenv";
 config({ path: ".env.local" });
 import { generateNewsletterDraft } from "../src/lib/pipeline";
+import { getAppUrl } from "../src/lib/app-url";
 
-const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+const appUrl = getAppUrl();
 
 function parseFocus(argv: string[]): string | undefined {
   const idx = argv.findIndex((a) => a === "--focus");

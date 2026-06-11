@@ -3,6 +3,7 @@ import { supabase } from "@/lib/supabase";
 import { sendEmail } from "@/lib/resend";
 import { renderNewsletterHtml } from "@/lib/pipeline";
 import { verifyAdminToken } from "@/lib/admin-auth";
+import { getAppUrl } from "@/lib/app-url";
 
 export async function POST(
   req: NextRequest,
@@ -48,7 +49,7 @@ export async function POST(
     .update({ status: "sending" })
     .eq("id", id);
 
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "https://patchnote.gg";
+  const appUrl = getAppUrl();
   let sent = 0;
   let failed = 0;
 

@@ -1,4 +1,5 @@
 import { Resend } from "resend";
+import { getAppUrl } from "./app-url";
 
 let _resend: Resend | null = null;
 
@@ -22,7 +23,7 @@ export async function sendEmail({
 }) {
   const fromEmail = process.env.RESEND_FROM_EMAIL || "hello@patchnote.gg";
   const fromName = process.env.RESEND_FROM_NAME || "Patch Note";
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const appUrl = getAppUrl();
   const unsubscribeUrl = `${appUrl}/api/unsubscribe?token=${unsubscribeToken}`;
 
   const result = await getResend().emails.send({
