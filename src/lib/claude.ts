@@ -116,8 +116,9 @@ export async function compileNewsletter(
 
   const makeRequest = () =>
     getAnthropic().messages.create({
-      model: "claude-sonnet-4-20250514",
+      model: "claude-sonnet-4-6",
       max_tokens: 16384,
+      output_config: { effort: "medium" },
       system: SYSTEM_PROMPT,
       messages: [
         {
@@ -243,8 +244,9 @@ Output ONLY valid JSON:
 }`;
 
   const response = await getAnthropic().messages.create({
-    model: "claude-sonnet-4-20250514",
+    model: "claude-sonnet-4-6",
     max_tokens: 16384,
+    output_config: { effort: "medium" },
     messages: [{ role: "user", content: prompt }],
   });
 
