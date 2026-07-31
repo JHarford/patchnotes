@@ -1,5 +1,5 @@
 import { render } from "@react-email/render";
-import { searchGameNews, searchFocusTopic } from "./search";
+import { searchGameNews, searchFocusTopic, searchIndustryEvents } from "./search";
 import { compileNewsletter } from "./claude";
 import { supabase } from "./supabase";
 import type { NewsletterContent, SearchResult } from "./types";
@@ -29,8 +29,13 @@ export async function generateNewsletterDraft(options?: {
     }
   }
 
-  // 2. Search and filter out already-used stories
-  const rawResults = await searchGameNews();
+  // 2. Search and filter out already-used stories. Event search runs in
+  // parallel — its results feed the opt-in Upcoming Events section and are
+  // NOT subject to the used-URL filter (event pages legitimately recur).
+  const [rawResults, eventResults] = await Promise.all([
+    searchGameNews(),
+    searchIndustryEvents(),
+  ]);
   const combined: SearchResult[] = [...rawResults];
   if (focus) {
     const focusResults = await searchFocusTopic(focus);
@@ -72,7 +77,7 @@ export async function generateNewsletterDraft(options?: {
   const issueNumber = (count || 0) + 1;
 
   // 3. Compile with Claude
-  const content = await compileNewsletter(results, issueNumber, recentHeadlines, focus);
+  const content = await compileNewsletter(results, issueNumber, recentHeadlines, focus, eventResults);
 
   // 4. Render HTML
   console.log("Rendering HTML...");

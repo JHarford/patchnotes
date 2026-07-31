@@ -19,6 +19,16 @@ interface QuickHit {
   include?: boolean;
 }
 
+interface IndustryEvent {
+  name: string;
+  dates: string;
+  location: string;
+  url: string;
+  blurb: string;
+  // Opt-IN: events only show in the newsletter when ticked (include === true).
+  include?: boolean;
+}
+
 interface Section {
   heading: string;
   emoji: string;
@@ -31,6 +41,7 @@ interface BodyJson {
   intro?: string;
   sections?: Section[];
   quick_hits?: QuickHit[];
+  events?: IndustryEvent[];
   lead_article_key?: string;
 }
 
@@ -118,11 +129,20 @@ export default function AdminDashboard({
     );
   }
 
-  function includedCount(json: BodyJson): { articles: number; total: number; quickHits: number; totalQuickHits: number } {
+  function includedCount(json: BodyJson): {
+    articles: number;
+    total: number;
+    quickHits: number;
+    totalQuickHits: number;
+    events: number;
+    totalEvents: number;
+  } {
     let articles = 0;
     let total = 0;
     let quickHits = 0;
     let totalQuickHits = 0;
+    let events = 0;
+    let totalEvents = 0;
     for (const s of json.sections || []) {
       for (const a of s.articles || []) {
         total++;
@@ -133,7 +153,11 @@ export default function AdminDashboard({
       totalQuickHits++;
       if (q.include !== false) quickHits++;
     }
-    return { articles, total, quickHits, totalQuickHits };
+    for (const ev of json.events || []) {
+      totalEvents++;
+      if (ev.include === true) events++;
+    }
+    return { articles, total, quickHits, totalQuickHits, events, totalEvents };
   }
 
   async function togglePreview(id: string) {
@@ -164,6 +188,10 @@ export default function AdminDashboard({
     }
     for (const q of json.quick_hits || []) {
       if (q.include === undefined) q.include = true;
+    }
+    // Events are opt-in — default to NOT included
+    for (const ev of json.events || []) {
+      if (ev.include === undefined) ev.include = false;
     }
     setCurateId(nl.id);
     setCurateJson(json);
@@ -221,6 +249,27 @@ export default function AdminDashboard({
       const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
       for (const q of next.quick_hits || []) {
         q.include = value;
+      }
+      return next;
+    });
+  }, []);
+
+  const toggleEvent = useCallback((idx: number) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      const ev = next.events?.[idx];
+      if (ev) ev.include = ev.include !== true;
+      return next;
+    });
+  }, []);
+
+  const setEventsAll = useCallback((value: boolean) => {
+    setCurateJson((prev) => {
+      if (!prev) return prev;
+      const next = JSON.parse(JSON.stringify(prev)) as BodyJson;
+      for (const ev of next.events || []) {
+        ev.include = value;
       }
       return next;
     });
@@ -445,7 +494,7 @@ export default function AdminDashboard({
             Editorial Curation
           </h4>
           <span style={{ color: "#8888a0", fontSize: "13px" }}>
-            {counts.articles}/{counts.total} articles, {counts.quickHits}/{counts.totalQuickHits} quick hits
+            {counts.articles}/{counts.total} articles, {counts.quickHits}/{counts.totalQuickHits} quick hits, {counts.events}/{counts.totalEvents} events
           </span>
         </div>
 
@@ -793,6 +842,117 @@ export default function AdminDashboard({
                   <div style={{ color: "#5a5a70", fontSize: "11px", marginTop: "1px" }}>
                     {qh.source_name}
                   </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Upcoming Events (opt-in) */}
+        {curateJson.events && curateJson.events.length > 0 && (
+          <div style={{ marginBottom: "20px" }}>
+            <div
+              style={{
+                display: "flex",
+                justifyContent: "space-between",
+                alignItems: "center",
+                marginBottom: "8px",
+                paddingBottom: "6px",
+                borderBottom: "1px solid #1e1e2e",
+              }}
+            >
+              <span style={{ color: "#a5a5c0", fontSize: "14px", fontWeight: 600 }}>
+                📅 Upcoming Events
+                <span style={{ color: "#5a5a70", fontWeight: 400, marginLeft: "8px", fontSize: "12px" }}>
+                  ({curateJson.events.filter((ev) => ev.include === true).length}/{curateJson.events.length} — opt-in, tick to show)
+                </span>
+              </span>
+              <div style={{ display: "flex", gap: "6px" }}>
+                <button
+                  onClick={() => setEventsAll(true)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#22c55e",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All Yes
+                </button>
+                <button
+                  onClick={() => setEventsAll(false)}
+                  style={{
+                    padding: "3px 8px",
+                    background: "transparent",
+                    border: "1px solid #2a2a3a",
+                    borderRadius: "4px",
+                    color: "#ef4444",
+                    fontSize: "11px",
+                    cursor: "pointer",
+                  }}
+                >
+                  All No
+                </button>
+              </div>
+            </div>
+
+            {curateJson.events.map((ev, eIdx) => (
+              <div
+                key={eIdx}
+                onClick={() => toggleEvent(eIdx)}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  padding: "8px 12px",
+                  marginBottom: "3px",
+                  borderRadius: "6px",
+                  cursor: "pointer",
+                  background: ev.include === true ? "#12121a" : "#0a0a10",
+                  opacity: ev.include === true ? 1 : 0.45,
+                  transition: "opacity 0.15s, background 0.15s",
+                }}
+              >
+                <span
+                  style={{
+                    flexShrink: 0,
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "5px",
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    background: ev.include === true ? "#16322a" : "#2a1a1a",
+                    color: ev.include === true ? "#22c55e" : "#ef4444",
+                    border: `1px solid ${ev.include === true ? "#22c55e33" : "#ef444433"}`,
+                  }}
+                >
+                  {ev.include === true ? "Y" : "N"}
+                </span>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ color: "#e4e4ef", fontSize: "13px", fontWeight: 600, lineHeight: "1.3" }}>
+                    {ev.name}
+                  </div>
+                  <div style={{ color: "#818cf8", fontSize: "11px", marginTop: "2px", fontWeight: 600 }}>
+                    {ev.dates} · {ev.location}
+                  </div>
+                  <div style={{ color: "#7a7a90", fontSize: "12px", marginTop: "2px", lineHeight: "1.4" }}>
+                    {ev.blurb}
+                  </div>
+                  <a
+                    href={ev.url}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => e.stopPropagation()}
+                    style={{ color: "#5a5a70", fontSize: "11px", marginTop: "2px", display: "inline-block" }}
+                  >
+                    {ev.url.replace(/^https?:\/\/(www\.)?/, "").split("/")[0]} ↗
+                  </a>
                 </div>
               </div>
             ))}

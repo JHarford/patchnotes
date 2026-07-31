@@ -91,6 +91,36 @@ export async function searchGameNews(): Promise<SearchResult[]> {
   return deduped;
 }
 
+const EVENT_QUERIES = [
+  "game developer conference upcoming dates GDC gamescom devcom",
+  "external development games conference XDS summit",
+  "game art conference summit upcoming",
+  "game design conference upcoming",
+  "game development industry events calendar 2026 2027",
+  "game dev meetup events upcoming",
+];
+
+export async function searchIndustryEvents(): Promise<SearchResult[]> {
+  console.log(`Searching for industry events... (${EVENT_QUERIES.length} queries)`);
+
+  // Month-wide freshness: event pages are published well ahead of the event,
+  // so daily freshness would miss almost all of them.
+  const results = await Promise.all(
+    EVENT_QUERIES.map((q) => braveSearch(q, "pm"))
+  );
+
+  const flat = results.flat();
+  const seen = new Set<string>();
+  const deduped = flat.filter((r) => {
+    if (seen.has(r.url)) return false;
+    seen.add(r.url);
+    return true;
+  });
+
+  console.log(`Found ${deduped.length} event articles`);
+  return deduped;
+}
+
 export async function searchFocusTopic(topic: string): Promise<SearchResult[]> {
   console.log(`Running focused searches for: "${topic}"`);
 

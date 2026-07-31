@@ -32,12 +32,25 @@ export interface QuickHit {
   include?: boolean;
 }
 
+export interface IndustryEvent {
+  name: string;
+  /** Human-readable dates, e.g. "17–21 March 2027". */
+  dates: string;
+  location: string;
+  url: string;
+  /** One-liner on what it is / why it matters. */
+  blurb: string;
+  /** Events are opt-IN: only shown when the editor ticks them (include === true). */
+  include?: boolean;
+}
+
 export interface NewsletterContent {
   title: string;
   date: string;
   intro: string;
   sections: NewsletterSection[];
   quick_hits?: QuickHit[];
+  events?: IndustryEvent[];
   header_image_url?: string;
   /** Which article is currently the lead, as "sectionIdx-articleIdx" (e.g. "0-2"). */
   lead_article_key?: string;

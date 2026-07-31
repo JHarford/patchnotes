@@ -56,6 +56,16 @@ Include EVERY article that has any relevance to that section. Do not skip storie
 
 At the end, include a "quick_hits" array of 15-20 rapid-fire one-liners. These cover EVERYTHING that didn't get a full write-up in the main sections: game releases, AI tidbits, tech and tooling snippets, business rumours, minor studio news, modding news, indie spotlights, mobile gaming, VR/AR, game jams, fan projects, retro gaming. Scrape every last story from the search results (except esports/egaming — the hard exclusion applies here too). Each quick hit has "include" set to true.
 
+## Upcoming Events section (REQUIRED — always include this):
+
+The user message contains a separate block of EVENT SEARCH RESULTS. From those (and any event mentions in the main results), build an "events" array of UPCOMING industry events: conferences, summits, expos, and meetups related to game development, external development / outsourcing, game art, or game design (e.g. GDC, XDS, gamescom, devcom, Develop:Brighton, regional game dev meetups). Rules:
+- Only FUTURE events (on or after today's date). Skip anything already past.
+- Skip esports/competitive gaming events (the hard exclusion applies).
+- Deduplicate: one entry per event, linking to the official event page where possible.
+- For each event: "name", "dates" (human-readable, e.g. "17–21 March 2027"; if unknown, best guess from the source or "Dates TBC"), "location" (city, country, or "Online"), "url", "blurb" (one sentence on what it is / who it's for).
+- Set "include" to FALSE on every event. Events are opt-IN: the editor ticks the few worth showing. This is the opposite of articles and quick hits.
+- Cast a wide net — 5-15 events is ideal if the sources support it.
+
 Also write:
 - A newsletter title (e.g. "Patch Note #N — [highlight of the day]")
 - A short, punchy intro paragraph (2-3 sentences setting the day's tone)
@@ -89,6 +99,16 @@ Output ONLY valid JSON matching this structure:
       "source_name": "string",
       "include": true
     }
+  ],
+  "events": [
+    {
+      "name": "string",
+      "dates": "string (human-readable)",
+      "location": "string",
+      "url": "string",
+      "blurb": "string (one sentence)",
+      "include": false
+    }
   ]
 }`;
 
@@ -96,16 +116,23 @@ export async function compileNewsletter(
   results: SearchResult[],
   issueNumber: number,
   recentHeadlines?: string[],
-  focus?: string
+  focus?: string,
+  eventResults?: SearchResult[]
 ): Promise<NewsletterContent> {
   console.log(`Compiling issue #${String(issueNumber).padStart(3, "0")} with Claude...`);
 
-  const userMessage = results
-    .map(
-      (r, i) =>
-        `[${i + 1}] ${r.title}\nURL: ${r.url}\nSource: ${r.source}\n${r.snippet}\n`
-    )
-    .join("\n");
+  const formatResults = (rs: SearchResult[]) =>
+    rs
+      .map(
+        (r, i) =>
+          `[${i + 1}] ${r.title}\nURL: ${r.url}\nSource: ${r.source}\n${r.snippet}\n`
+      )
+      .join("\n");
+
+  let userMessage = formatResults(results);
+  if (eventResults && eventResults.length > 0) {
+    userMessage += `\n\n## EVENT SEARCH RESULTS (for the Upcoming Events section only):\n\n${formatResults(eventResults)}`;
+  }
 
   const paddedNum = String(issueNumber).padStart(3, "0");
 

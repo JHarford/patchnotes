@@ -106,6 +106,32 @@ export default function NewsletterEmail({
             </>
           )}
 
+          {content.events && content.events.filter((e) => e.include === true).length > 0 && (
+            <>
+              <Hr style={divider} />
+              <Section style={sectionBlock}>
+                <Heading as="h2" style={sectionHeading}>
+                  📅 Upcoming Events
+                </Heading>
+                {content.events
+                  .filter((e) => e.include === true)
+                  .map((event, ei) => (
+                  <Section key={ei} style={eventBlock}>
+                    <Text style={eventName}>
+                      <Link href={event.url} style={eventNameLink}>
+                        {event.name}
+                      </Link>
+                    </Text>
+                    <Text style={eventMeta}>
+                      {event.dates} &middot; {event.location}
+                    </Text>
+                    <Text style={eventBlurb}>{event.blurb}</Text>
+                  </Section>
+                ))}
+              </Section>
+            </>
+          )}
+
           <Hr style={divider} />
 
           <Section style={forwardSection}>
@@ -272,6 +298,38 @@ const quickHitSource = {
   color: "#6366f1",
   fontSize: "11px",
   textDecoration: "none",
+};
+
+const eventBlock = {
+  marginBottom: "18px",
+};
+
+const eventName = {
+  margin: "0 0 2px",
+};
+
+const eventNameLink = {
+  color: "#1a1a2e",
+  fontSize: "15px",
+  fontWeight: "600" as const,
+  textDecoration: "none",
+  borderBottom: "1px solid #6366f1",
+};
+
+const eventMeta = {
+  color: "#6366f1",
+  fontSize: "12px",
+  fontWeight: "600" as const,
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.5px",
+  margin: "0 0 4px",
+};
+
+const eventBlurb = {
+  color: "#555566",
+  fontSize: "13px",
+  lineHeight: "1.5",
+  margin: "0",
 };
 
 const forwardSection = {
