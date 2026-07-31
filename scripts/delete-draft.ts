@@ -39,10 +39,16 @@ async function main() {
 
   console.log(`Deleted [${nl.status}] ${nl.title}`);
 
-  const { count } = await supabase
+  const { data: sentTitles } = await supabase
     .from("newsletters")
-    .select("*", { count: "exact", head: true });
-  console.log(`Total newsletters now: ${count} → next issue will be #${String((count || 0) + 1).padStart(3, "0")}`);
+    .select("title")
+    .eq("status", "sent");
+  let maxSent = 0;
+  for (const n of sentTitles || []) {
+    const m = (n.title as string | null)?.match(/#(\d+)/);
+    if (m) maxSent = Math.max(maxSent, parseInt(m[1], 10));
+  }
+  console.log(`Next issue will be #${String(maxSent + 1).padStart(3, "0")} (sequential over sent issues)`);
 }
 
 main().catch((err) => {

@@ -14,6 +14,21 @@ export async function generateNewsletterDraft(options?: {
 }> {
   const focus = options?.focus;
 
+  // 0. Retire unsent drafts from previous runs. They never reached readers,
+  // so their issue numbers are reclaimed — sent issues stay sequential even
+  // when the editor skips days. Retired drafts disappear from the admin list
+  // but stay in the DB.
+  const { data: retired } = await supabase
+    .from("newsletters")
+    .update({ status: "retired", updated_at: new Date().toISOString() })
+    .eq("status", "draft")
+    .select("title");
+  if (retired && retired.length > 0) {
+    console.log(
+      `Retired ${retired.length} unsent draft(s): ${retired.map((r) => r.title).join(" | ")}`
+    );
+  }
+
   // 1. Get previously used source URLs (last 14 days)
   const twoWeeksAgo = new Date(Date.now() - 14 * 86400000).toISOString();
   const { data: recentNewsletters } = await supabase
@@ -70,11 +85,27 @@ export async function generateNewsletterDraft(options?: {
     }
   }
 
-  // 3. Get next issue number
-  const { count } = await supabase
+  // 3. Get next issue number: one past the highest number actually SENT, so
+  // the public sequence has no gaps. Draft/retired numbers are reclaimed.
+  const { data: sentTitles } = await supabase
     .from("newsletters")
-    .select("*", { count: "exact", head: true });
-  const issueNumber = (count || 0) + 1;
+    .select("title")
+    .eq("status", "sent");
+  let maxSentIssue = 0;
+  for (const n of sentTitles || []) {
+    const m = (n.title as string | null)?.match(/#(\d+)/);
+    if (m) maxSentIssue = Math.max(maxSentIssue, parseInt(m[1], 10));
+  }
+  let issueNumber: number;
+  if (maxSentIssue > 0) {
+    issueNumber = maxSentIssue + 1;
+  } else {
+    // No sent issues yet — fall back to the old count-based numbering
+    const { count } = await supabase
+      .from("newsletters")
+      .select("*", { count: "exact", head: true });
+    issueNumber = (count || 0) + 1;
+  }
 
   // 3. Compile with Claude
   const content = await compileNewsletter(results, issueNumber, recentHeadlines, focus, eventResults);
