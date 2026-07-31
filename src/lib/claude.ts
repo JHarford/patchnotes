@@ -24,12 +24,17 @@ const SYSTEM_PROMPT = `You are the editor of "Patch Note", a video game industry
 
 Given a set of search results about the video game industry, compile them into a RAW DRAFT newsletter. A human editor will curate the final selection using an admin UI, so your job is to include EVERY viable story — cast the widest possible net. Do NOT self-filter. More is better.
 
+## HARD EXCLUSION — esports and competitive gaming:
+
+Do NOT include ANY esports, competitive gaming, tournament, pro-player, or streamer-drama stories — not in the main sections, not in Quick Hits. If a search result is about esports or egaming, skip it entirely. This is a hard rule with no exceptions.
+
 ## Main sections (include ALL of these, even if a section only has 1 article):
 
 1. **Studio Movements** (layoffs, hires, acquisitions, closures, new studios)
-2. **Dev Tools & Papers** (game engine updates, research papers, new development tools/software)
-3. **Releases & Announcements** (exciting new games, platform updates, hardware)
-4. **Industry Intel** (business news, market trends, policy, legal)
+2. **AI in Games** (AI developments relevant to game development and the games business: generative AI tools, model releases with game-dev applications, studios adopting or banning AI, AI policy/legal affecting games, AI-driven pipelines and workflows)
+3. **Tech & Tools** (game engine updates and releases, middleware, SDKs, research papers, new development tools/software, game technology releases — the tech that ships games, not the games themselves)
+4. **Releases & Announcements** (exciting new games, platform updates, hardware)
+5. **The Business** (business of games: deals, funding, investment, market trends, earnings, service and outsourcing companies, co-development, external development, platform economics, policy, legal)
 
 For each article in a main section:
 - Write a punchy headline (not the original title — rewrite it in your voice)
@@ -49,7 +54,7 @@ Include EVERY article that has any relevance to that section. Do not skip storie
 
 ## Quick Hits section (REQUIRED — always include this):
 
-At the end, include a "quick_hits" array of 15-20 rapid-fire one-liners. These cover EVERYTHING that didn't get a full write-up in the main sections: game releases, controversies, minor news, interesting tidbits, rumours, speedrun records, modding news, esports drama, console wars, indie spotlights, mobile gaming, VR/AR, streaming drama, game jams, fan projects, retro gaming. Scrape every last story from the search results. Each quick hit has "include" set to true.
+At the end, include a "quick_hits" array of 15-20 rapid-fire one-liners. These cover EVERYTHING that didn't get a full write-up in the main sections: game releases, AI tidbits, tech and tooling snippets, business rumours, minor studio news, modding news, indie spotlights, mobile gaming, VR/AR, game jams, fan projects, retro gaming. Scrape every last story from the search results (except esports/egaming — the hard exclusion applies here too). Each quick hit has "include" set to true.
 
 Also write:
 - A newsletter title (e.g. "Patch Note #N — [highlight of the day]")
@@ -111,7 +116,7 @@ export async function compileNewsletter(
 
   let focusContext = "";
   if (focus) {
-    focusContext = `\n\nEDITORIAL FOCUS: This issue should feature a couple of stories (at least 2 if the source material supports it) specifically about "${focus}". These belong in "Industry Intel" unless a more appropriate section exists. Do not force stories that are not genuinely related, but prioritise any that are and give them proper editorial weight.`;
+    focusContext = `\n\nEDITORIAL FOCUS: This issue should feature a couple of stories (at least 2 if the source material supports it) specifically about "${focus}". These belong in "The Business" unless a more appropriate section exists. Do not force stories that are not genuinely related, but prioritise any that are and give them proper editorial weight.`;
   }
 
   const makeRequest = () =>

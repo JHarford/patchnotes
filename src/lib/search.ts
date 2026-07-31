@@ -5,13 +5,16 @@ const BRAVE_SEARCH_URL = "https://api.search.brave.com/res/v1/web/search";
 const QUERIES = [
   "video game studio layoffs hires 2026",
   "video game studio acquisitions closures",
+  "AI game development news",
+  "generative AI video game industry",
+  "game engine update release Unreal Unity Godot",
+  "game development middleware tools release",
   "game engine research paper game development tools",
+  "video game outsourcing co-development external development news",
+  "video game industry business deals funding investment",
   "new game studio announcements indie",
-  "game development technology news",
   "video game industry news today",
   "video game releases this week",
-  "gaming controversy drama",
-  "esports news",
   "indie game spotlight",
 ];
 
