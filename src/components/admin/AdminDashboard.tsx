@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 
 interface Article {
   headline: string;
@@ -173,6 +173,16 @@ export default function AdminDashboard({
       setPreviewHtml(null);
     }
   }
+
+  // Deep link from the morning notification email: /admin?curate=<id> opens
+  // that draft's curation view directly.
+  useEffect(() => {
+    const id = new URLSearchParams(window.location.search).get("curate");
+    if (!id) return;
+    const nl = newsletters.find((n) => n.id === id);
+    if (nl && nl.status !== "sent") openCurate(nl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const toggleArticle = useCallback((sectionIdx: number, articleIdx: number) => {
     setCurateJson((prev) => {
